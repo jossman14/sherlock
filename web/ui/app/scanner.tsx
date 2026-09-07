@@ -334,12 +334,18 @@ export function Scanner() {
                           <span className="mono text-xs text-[var(--faint)]">{grup.length}</span>
                           <div className="rule flex-1" />
                         </div>
+                        {(s === "unknown" || s === "waf") && grup.some((h) => h.context) && (
+                          <p className="mt-2 text-xs text-[var(--faint)]">
+                            Situs ini gagal diperiksa, bukan berarti akunnya tidak ada.
+                            Arahkan kursor ke namanya untuk alasannya.
+                          </p>
+                        )}
                         <ul className="mt-3 flex flex-wrap gap-1.5">
                           {grup.map((h) => (
                             <li
                               key={h.site}
                               title={h.context ?? h.url_main ?? h.site}
-                              className="chip"
+                              className={`chip ${h.context ? "cursor-help" : ""}`}
                               style={s === "unknown" || s === "waf" ? { color: "var(--failed)", borderColor: "color-mix(in srgb, var(--failed) 25%, var(--line))" } : undefined}
                             >
                               {h.site}

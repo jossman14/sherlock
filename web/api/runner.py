@@ -8,6 +8,8 @@ hasil dititipkan ke antrean supaya bisa dikirim ke browser saat itu juga.
 
 from __future__ import annotations
 
+import json
+import pathlib
 import queue
 import threading
 import time
@@ -40,14 +42,25 @@ class _Antrean(QueryNotify):
 
     def update(self, result):  # dipanggil sherlock() sekali per situs
         info = self._sites.get(result.site_name, {})
+        status = str(result.status).lower()
+        context = result.context
+
+        # Situs yang terbukti tidak bisa diperiksa dengan jujur dari server ini dilaporkan
+        # sebagai "gagal diperiksa", bukan sebagai jawaban. Diamnya negatif palsu jauh lebih
+        # menyesatkan bagi penelusur daripada kegagalan yang terang-terangan.
+        alasan = TIDAK_ANDAL.get(result.site_name)
+        if alasan:
+            status = "unknown"
+            context = alasan
+
         self._q.put(
             Hasil(
                 site=result.site_name,
                 url_user=result.site_url_user,
                 url_main=info.get("urlMain"),
-                status=str(result.status).lower(),
+                status=status,
                 query_time=round(result.query_time, 3) if result.query_time else None,
-                context=result.context,
+                context=context,
             )
         )
 
@@ -56,6 +69,11 @@ class _Antrean(QueryNotify):
 
     def finish(self, message=None):
         pass
+
+
+_OVERRIDE = json.loads((pathlib.Path(__file__).parent / "site_overrides.json").read_text("utf-8"))
+PATCH: dict[str, dict] = _OVERRIDE.get("patch", {})
+TIDAK_ANDAL: dict[str, str] = _OVERRIDE.get("tidak_andal", {})
 
 
 class KatalogSitus:
@@ -74,7 +92,20 @@ class KatalogSitus:
     def sites(self) -> SitesInformation:
         with self._lock:
             if self._sites is None or time.time() - self._diambil > self._ttl:
-                self._sites = SitesInformation()
+                s = SitesInformation()
+                # Tambalan diterapkan setiap kali manifest disegarkan, bukan sekali saat impor —
+                # kalau tidak, manifest baru akan diam-diam mengembalikan entri yang rusak.
+                for nama, tambalan in PATCH.items():
+                    situs = s.sites.get(nama)
+                    if situs is None:
+                        continue
+                    bersih = {k: v for k, v in tambalan.items() if not k.startswith("_")}
+                    situs.information = {**situs.information, **bersih}
+                    # urlProbe lama harus dibuang, bukan ditimpa: selama ia ada, Sherlock
+                    # memakainya dan url langsung yang baru tidak pernah tersentuh.
+                    if "urlProbe" not in bersih:
+                        situs.information.pop("urlProbe", None)
+                self._sites = s
                 self._diambil = time.time()
             return self._sites
 

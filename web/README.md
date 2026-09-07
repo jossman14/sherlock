@@ -60,6 +60,20 @@ tetangga — makanya layanannya bernama `sherlock-api`.
 `$HOSTNAME` sebagai alamat bind, dan Docker mengisinya dengan ID kontainer; tanpa override,
 Next hanya mendengar di satu antarmuka dan port yang dipublikasikan ke host menolak koneksi.
 
+**Manifest hulu ditambal lewat `web/api/site_overrides.json`.** Sherlock memeriksa sebagian
+situs besar lewat proxy pihak ketiga; ketika proxy itu mati atau memblokir IP kita, Sherlock
+tidak melaporkan kegagalan melainkan "tidak ada akun". Negatif palsu yang diam seperti itu
+lebih menyesatkan daripada error. Yang sudah ditambal (diuji 2026-09-07 dari VPS):
+
+| Situs | Masalah hulu | Tindakan |
+|---|---|---|
+| X (Twitter) | `urlProbe` menunjuk nitter.privacydev.net yang mati → selalu "Error Connecting" | diperiksa langsung ke x.com; judul halaman membedakan ada/tidak dengan jelas |
+| Instagram | membalas 429 untuk semua IP pusat data; proxy imginn.com membalas 403 | ditandai tidak andal → dilaporkan "gagal diperiksa" |
+| TikTok | melaporkan "claimed" bahkan untuk username acak | ditandai tidak andal → dilaporkan "gagal diperiksa" |
+
+Tiap entri di berkas itu wajib menyertakan alasan dan tanggal pembuktiannya, supaya tambalan
+bisa dicabut lagi kalau keadaan hulu berubah.
+
 **Status hasil bukan biner.** `claimed` berarti ada halaman dengan nama itu — bukan bukti
 orangnya sama. `unknown`/`waf` berarti situsnya gagal diperiksa (proteksi bot), bukan berarti
 kosong. UI menampilkan ketiganya terpisah supaya perbedaan ini tidak hilang.
