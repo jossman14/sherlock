@@ -47,6 +47,10 @@ depan (Next.js, nginx, CDN) akan meng-gzip aliran ini, dan gzip menahan data sam
 penuh — hasil pengukuran: potongan pertama baru sampai ke browser setelah **30 detik**,
 sekaligus 87 KB. Dengan header itu, potongan pertama tiba dalam **20 milidetik**.
 
+**Alamat API dibekukan saat build UI.** `rewrites()` Next.js masuk ke routes-manifest pada
+waktu build, jadi `SHERLOCK_API_URL` diberikan sebagai build arg — menyetelnya sebagai
+environment runtime saja tidak berpengaruh dan UI akan mencari API di alamat pengembangan.
+
 **Status hasil bukan biner.** `claimed` berarti ada halaman dengan nama itu — bukan bukti
 orangnya sama. `unknown`/`waf` berarti situsnya gagal diperiksa (proteksi bot), bukan berarti
 kosong. UI menampilkan ketiganya terpisah supaya perbedaan ini tidak hilang.
