@@ -1,7 +1,11 @@
 # Dua layanan: API Python yang membungkus Sherlock, dan UI Next.js yang mem-proxy
 # /api ke sana. Hanya UI yang dipublikasikan ke luar; API tinggal di jaringan internal.
 services:
-  api:
+  # Nama layanan HARUS unik lintas seluruh VPS, bukan cuma di dalam proyek ini:
+  # `ui` ikut jaringan overlay dokploy-network yang dipakai bersama semua aplikasi,
+  # dan di sana nama sependek "api" sudah dipakai stack lain — permintaan /api kami
+  # sempat mendarat di API milik aplikasi tetangga.
+  sherlock-api:
     build:
       context: ..
       dockerfile: web/api/Dockerfile
@@ -20,10 +24,10 @@ services:
       context: ./ui
       dockerfile: Dockerfile
       args:
-        SHERLOCK_API_URL: http://api:8000
+        SHERLOCK_API_URL: http://sherlock-api:8000
     restart: unless-stopped
     depends_on:
-      - api
+      - sherlock-api
     ports:
       - "127.0.0.1:${SHERLOCK_PORT:-8090}:3000"
     networks:

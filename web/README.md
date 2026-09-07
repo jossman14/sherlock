@@ -51,6 +51,15 @@ sekaligus 87 KB. Dengan header itu, potongan pertama tiba dalam **20 milidetik**
 waktu build, jadi `SHERLOCK_API_URL` diberikan sebagai build arg — menyetelnya sebagai
 environment runtime saja tidak berpengaruh dan UI akan mencari API di alamat pengembangan.
 
+**Nama layanan compose harus unik lintas VPS.** Kontainer UI ikut jaringan overlay
+`dokploy-network` yang dipakai bersama seluruh aplikasi di server. Nama sependek `api` sudah
+dipakai stack lain di sana, dan permintaan `/api` kami sempat mendarat di API milik aplikasi
+tetangga — makanya layanannya bernama `sherlock-api`.
+
+**`HOSTNAME=0.0.0.0` wajib di image UI.** `server.js` hasil `output: standalone` memakai
+`$HOSTNAME` sebagai alamat bind, dan Docker mengisinya dengan ID kontainer; tanpa override,
+Next hanya mendengar di satu antarmuka dan port yang dipublikasikan ke host menolak koneksi.
+
 **Status hasil bukan biner.** `claimed` berarti ada halaman dengan nama itu — bukan bukti
 orangnya sama. `unknown`/`waf` berarti situsnya gagal diperiksa (proteksi bot), bukan berarti
 kosong. UI menampilkan ketiganya terpisah supaya perbedaan ini tidak hilang.
