@@ -271,6 +271,8 @@ export function Scanner() {
               )}
             </div>
 
+            {/* Grid temuan memakai items-start supaya kartu tanpa bio tidak ikut diregangkan
+                setinggi kartu terpanjang di barisnya. */}
             {ditemukan.length === 0 ? (
               <p className="mt-4 text-sm text-[var(--muted)]">
                 {fase === "scanning"
@@ -278,8 +280,6 @@ export function Scanner() {
                   : "Tidak ada akun yang cocok dengan username ini."}
               </p>
             ) : (
-              {/* items-start: kartu tanpa bio tidak ikut diregangkan setinggi kartu terpanjang
-                  di barisnya, sehingga tidak ada blok kosong besar di tengah grid. */}
               <ul className="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {ditemukan.map((h) => (
                   <KartuTemuan key={h.site} hasil={h} username={target} />
