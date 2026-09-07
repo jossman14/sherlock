@@ -45,3 +45,9 @@ tests/.excluded_sites
 
 # Vim swap files
 *.swp
+
+# Web UI (fork ini)
+.venv/
+web/ui/node_modules/
+web/ui/.next/
+web/ui/.env*.local

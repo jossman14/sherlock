@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/* ── Arah desain: konsol investigasi ──────────────────────────────────────
+   Gelap pekat sebagai latar kerja, aksen amber sebagai satu-satunya warna
+   "panas" supaya temuan benar-benar menonjol, dan monospace untuk segala yang
+   berupa data (nama situs, URL, waktu). Warna dipakai semantik: amber = proses
+   berjalan, emerald = akun ditemukan, abu = tidak ada, merah = gagal diperiksa.
+   Satu tampilan saja — alat ini dipakai berjam-jam di layar, bukan dokumen.  */
+
+:root {
+  --ground: #0a0c0f;
+  --surface: #12161b;
+  --surface-2: #171c23;
+  --line: #232a33;
+  --line-soft: #1a2029;
+  --ink: #e9edf2;
+  --muted: #8d97a5;
+  --faint: #5d6773;
+
+  --accent: #f0a92a;
+  --accent-ink: #ffce6b;
+  --claimed: #3ad07f;
+  --failed: #e5675e;
+
+  --r-1: 8px;
+  --r-2: 14px;
+  --r-3: 22px;
+
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 18px 40px -18px rgb(0 0 0 / 0.85);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; }
+
+html, body { overflow-x: clip; }
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  /* Atmosfer: dua sorot lembut, bukan gradasi penuh layar yang bikin teks lelah. */
+  background-image:
+    radial-gradient(70rem 40rem at 12% -8%, rgb(240 169 42 / 0.07), transparent 60%),
+    radial-gradient(50rem 34rem at 92% 0%, rgb(58 208 127 / 0.05), transparent 62%);
+  background-attachment: fixed;
+}
+
+.mono { font-family: var(--mono); font-feature-settings: "tnum" 1; }
+
+.display {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 0.98;
+}
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+}
+
+/* Garis bawah tipis di atas kartu — memberi kesan berlapis tanpa bayangan berat. */
+.surface-hi {
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  box-shadow: var(--shadow-2);
+}
+
+.rule { height: 1px; background: var(--line-soft); }
+
+/* ── Kontrol ───────────────────────────────────────────────────────────── */
+
+.field {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-2);
+  transition: border-color 160ms var(--ease), box-shadow 160ms var(--ease);
+}
+.field:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.field input { background: transparent; border: 0; outline: none; color: var(--ink); }
+.field input::placeholder { color: var(--faint); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: var(--r-1);
+  font-weight: 650;
+  font-size: 0.875rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: transform 120ms var(--ease), background 160ms var(--ease), border-color 160ms var(--ease), color 160ms var(--ease);
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.btn-primary { background: var(--accent); color: #17130a; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-ink); }
+
+.btn-ghost { background: transparent; border-color: var(--line); color: var(--muted); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--faint); color: var(--ink); }
+
+.chip {
+  font-family: var(--mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ── Gerak ─────────────────────────────────────────────────────────────── */
+
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.rise { animation: rise 320ms var(--ease) both; }
+
+@keyframes pulse-ring { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+.scanning { animation: pulse-ring 1.6s ease-in-out infinite; }
+
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(400%); } }
+/* Kilau tipis yang berjalan di bar progres — menandakan "masih hidup" saat
+   angka belum berubah karena situs lambat merespons. */
+.sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 25%;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.28), transparent);
+  animation: sweep 1.5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .scanning, .sweep::after { animation: none !important; }
+  * { transition-duration: 1ms !important; }
+}
+
+/* Scrollbar yang tidak merusak suasana gelap. */
+* { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }

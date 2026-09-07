@@ -1,0 +1,28 @@
+# Dua layanan: API Python yang membungkus Sherlock, dan UI Next.js yang mem-proxy
+# /api ke sana. Hanya UI yang dipublikasikan ke luar; API tinggal di jaringan internal.
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: web/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      SHERLOCK_RATE_MAX: "${SHERLOCK_RATE_MAX:-5}"
+      SHERLOCK_RATE_WINDOW: "${SHERLOCK_RATE_WINDOW:-600}"
+      SHERLOCK_MAX_CONCURRENT: "${SHERLOCK_MAX_CONCURRENT:-4}"
+      SHERLOCK_MAX_CONCURRENT_IP: "${SHERLOCK_MAX_CONCURRENT_IP:-1}"
+      SHERLOCK_TIMEOUT: "${SHERLOCK_TIMEOUT:-30}"
+    expose:
+      - "8000"
+
+  ui:
+    build:
+      context: ./ui
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      SHERLOCK_API_URL: http://api:8000
+    ports:
+      - "${SHERLOCK_PORT:-8090}:3000"
