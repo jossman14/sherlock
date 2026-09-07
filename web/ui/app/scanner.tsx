@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_BASE ?? "";
 
@@ -16,6 +16,13 @@ type Hasil = {
 };
 
 type Fase = "idle" | "scanning" | "done" | "error" | "stopped";
+
+type Profil = {
+  title?: string | null;
+  description?: string | null;
+  image?: string | null;
+  error?: string;
+};
 
 const LABEL: Record<Status, string> = {
   claimed: "Ditemukan",
@@ -271,24 +278,11 @@ export function Scanner() {
                   : "Tidak ada akun yang cocok dengan username ini."}
               </p>
             ) : (
-              <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {/* items-start: kartu tanpa bio tidak ikut diregangkan setinggi kartu terpanjang
+                  di barisnya, sehingga tidak ada blok kosong besar di tengah grid. */}
+              <ul className="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {ditemukan.map((h) => (
-                  <li key={h.site} className="rise">
-                    <a
-                      href={h.url_user ?? "#"}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="group block h-full rounded-[var(--r-2)] border border-[color-mix(in_srgb,var(--claimed)_28%,var(--line))] bg-[color-mix(in_srgb,var(--claimed)_6%,var(--surface))] p-4 transition hover:border-[var(--claimed)] hover:bg-[color-mix(in_srgb,var(--claimed)_11%,var(--surface))]"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="font-semibold tracking-tight">{h.site}</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mt-1 shrink-0 text-[var(--faint)] transition group-hover:text-[var(--claimed)]">
-                          <path d="M7 17 17 7M8 7h9v9" />
-                        </svg>
-                      </div>
-                      <p className="mono mt-2 truncate text-xs text-[var(--muted)]">{h.url_user}</p>
-                    </a>
-                  </li>
+                  <KartuTemuan key={h.site} hasil={h} username={target} />
                 ))}
               </ul>
             )}
@@ -382,5 +376,88 @@ function Angka({ label, nilai, warna, aksen }: { label: string; nilai: string; w
         {nilai}
       </p>
     </div>
+  );
+}
+
+
+/**
+ * Kartu satu akun yang ditemukan. Metadata profil (nama tampilan, bio, foto) baru diambil
+ * ketika kartunya benar-benar terlihat di layar — satu pemindaian bisa menghasilkan puluhan
+ * temuan, dan menembak semuanya sekaligus hanya membebani situs tujuan tanpa ada yang membaca.
+ */
+function KartuTemuan({ hasil, username }: { hasil: Hasil; username: string }) {
+  const ref = useRef<HTMLLIElement>(null);
+  const [profil, setProfil] = useState<Profil | null>(null);
+  const [gambarGagal, setGambarGagal] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || profil) return;
+    const io = new IntersectionObserver(
+      ([entri]) => {
+        if (!entri.isIntersecting) return;
+        io.disconnect();
+        fetch(`${API}/api/profile?site=${encodeURIComponent(hasil.site)}&username=${encodeURIComponent(username)}`)
+          .then((r) => r.json())
+          .then(setProfil)
+          .catch(() => setProfil({ error: "gagal" }));
+      },
+      { rootMargin: "120px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasil.site, username, profil]);
+
+  const bio = profil?.description?.trim();
+  const nama = profil?.title?.trim();
+  const foto = !gambarGagal ? profil?.image : null;
+
+  return (
+    <li ref={ref} className="rise">
+      <a
+        href={hasil.url_user ?? "#"}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="group block h-full rounded-[var(--r-2)] border border-[color-mix(in_srgb,var(--claimed)_28%,var(--line))] bg-[color-mix(in_srgb,var(--claimed)_6%,var(--surface))] p-4 transition hover:border-[var(--claimed)] hover:bg-[color-mix(in_srgb,var(--claimed)_11%,var(--surface))]"
+      >
+        <div className="flex items-start gap-3">
+          {foto ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={foto}
+              alt=""
+              width={36}
+              height={36}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              onError={() => setGambarGagal(true)}
+              className="h-9 w-9 shrink-0 rounded-full border border-[var(--line)] object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="mono grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--line)] bg-[var(--surface-2)] text-sm text-[var(--faint)]"
+            >
+              {hasil.site.charAt(0)}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <span className="truncate font-semibold tracking-tight">{hasil.site}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="mt-1 shrink-0 text-[var(--faint)] transition group-hover:text-[var(--claimed)]">
+                <path d="M7 17 17 7M8 7h9v9" />
+              </svg>
+            </div>
+            {nama && <p className="truncate text-xs text-[var(--ink)]">{nama}</p>}
+            <p className="mono mt-1 truncate text-xs text-[var(--muted)]">{hasil.url_user}</p>
+          </div>
+        </div>
+        {bio && (
+          <p className="mt-3 line-clamp-2 border-t border-[var(--line-soft)] pt-2.5 text-xs leading-relaxed text-[var(--muted)]">
+            {bio}
+          </p>
+        )}
+      </a>
+    </li>
   );
 }

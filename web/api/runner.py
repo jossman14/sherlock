@@ -117,6 +117,17 @@ class KatalogSitus:
             if sertakan_nsfw or not site.is_nsfw
         }
 
+    def url_untuk(self, nama_situs: str, username: str) -> str | None:
+        """URL profil dibangun DARI MANIFEST, bukan dari masukan pengguna.
+
+        Endpoint metadata karenanya tidak pernah menerima URL bebas — itu yang menutup
+        peluang server dipakai menembak alamat internal (SSRF).
+        """
+        for s in self.sites():
+            if s.name == nama_situs:
+                return s.url_username_format.replace("{}", username)
+        return None
+
     def daftar(self) -> list[dict]:
         return [
             {"name": s.name, "url_main": s.information.get("urlMain"), "nsfw": bool(s.is_nsfw)}

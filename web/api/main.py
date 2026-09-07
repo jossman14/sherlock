@@ -12,6 +12,7 @@ from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
+from profil import ambil as ambil_profil
 from ratelimit import BatasLaju, Kuota
 from runner import KATALOG, pindai
 
@@ -28,7 +29,12 @@ ASAL = [o for o in os.getenv("SHERLOCK_CORS_ORIGINS", "*").split(",") if o]
 # menyaring di depan mencegah permintaan sia-sia sekaligus menutup penyuntikan lewat URL.
 POLA_USERNAME = re.compile(r"^[\w.\-]{1,64}$", re.UNICODE)
 
+# Permintaan metadata jauh lebih ringan daripada pemindaian (satu situs, bukan 400),
+# jadi batasnya terpisah dan longgar — tapi tetap ada, karena ia tetap menembak keluar.
+MAKS_PROFIL = int(os.getenv("SHERLOCK_PROFILE_MAX", "120"))
+
 batas = BatasLaju(MAKS_PINDAI, JENDELA)
+batas_profil = BatasLaju(MAKS_PROFIL, JENDELA)
 kuota = Kuota(MAKS_SERENTAK, MAKS_SERENTAK_IP)
 
 app = FastAPI(title="Sherlock Web", version="1.0.0", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -65,6 +71,35 @@ def limits(request: Request):
         "max_concurrent_per_ip": MAKS_SERENTAK_IP,
         "timeout_seconds": TIMEOUT,
     }
+
+
+@app.get("/api/profile")
+async def profile(request: Request, site: str = Query(..., max_length=80), username: str = Query(..., max_length=64)):
+    """Metadata Open Graph satu profil: nama tampilan, bio, foto profil.
+
+    BUKAN isi postingan — X dan Instagram menutup akses anonim ke linimasa, dan mengambilnya
+    memerlukan sesi login yang melanggar ketentuan keduanya.
+    """
+    username = username.strip()
+    if not POLA_USERNAME.match(username):
+        return JSONResponse({"error": "Username tidak sah."}, status_code=400)
+
+    boleh, tunggu = batas_profil.izinkan(ip_klien(request))
+    if not boleh:
+        return JSONResponse({"error": f"Terlalu banyak permintaan. Tunggu {tunggu} detik."},
+                            status_code=429, headers={"Retry-After": str(tunggu)})
+
+    url = KATALOG.url_untuk(site, username)
+    if not url:
+        return JSONResponse({"error": "Situs tidak dikenal."}, status_code=404)
+
+    data = await asyncio.get_running_loop().run_in_executor(None, ambil_profil, url)
+    # Judul yang isinya cuma nama situsnya sendiri ("Bitbucket") bukan nama pemilik akun.
+    # Sebagian situs tidak memasang og:site_name, jadi pembandingnya diambil dari manifest.
+    judul = (data.get("title") or "").strip().casefold()
+    if judul and judul == site.strip().casefold():
+        data = {**data, "title": None}
+    return data
 
 
 async def _aliran(username: str, nsfw: bool, ip: str) -> AsyncIterator[str]:

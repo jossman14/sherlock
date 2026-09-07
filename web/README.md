@@ -26,6 +26,29 @@ cd web && docker compose up -d --build
 
 UI terbit di `${SHERLOCK_PORT:-8090}`; API hanya ada di jaringan internal compose.
 
+## Kartu profil (metadata Open Graph)
+
+Tiap akun yang ditemukan bisa dilengkapi nama tampilan, bio, dan foto profil lewat
+`GET /api/profile?site=<nama>&username=<u>` — dibaca dari tag `og:*`, yaitu data yang situs
+memang terbitkan untuk pratinjau tautan.
+
+**Ini bukan pengambilan isi postingan, dan memang tidak bisa.** Diuji 2026-09-07: halaman X
+tanpa login hanya memuat metadata profil — pencarian `tweetText`/`itemContent` di 270 KB HTML
+mengembalikan nol hasil, karena linimasa dimuat lewat GraphQL bertoken. Instagram membalas 429
+untuk IP pusat data. Mengambil postingan memerlukan API resmi berbayar atau sesi login yang
+melanggar ketentuan kedua platform.
+
+Dua pengaman di endpoint ini:
+
+- **URL dibangun dari manifest**, tidak pernah dari masukan pengguna — tidak ada peluang
+  memakai server sebagai perantara menembak alamat internal (SSRF).
+- **Tiap lompatan redirect diperiksa ulang** terhadap alamat privat/loopback/link-local; sebuah
+  situs bisa saja mengalihkan kita ke `169.254.169.254`, dan permintaan itu berangkat dari
+  dalam VPS.
+
+UI mengambilnya secara malas lewat IntersectionObserver — hanya kartu yang benar-benar terlihat
+yang memicu permintaan.
+
 ## Pembatasan pemakaian
 
 Satu pemindaian menembak 400+ situs sekaligus. Yang dilindungi bukan CPU server melainkan
@@ -39,6 +62,7 @@ bawaan (bisa diubah lewat environment):
 | `SHERLOCK_MAX_CONCURRENT` | 4 | pemindaian serentak seluruh server |
 | `SHERLOCK_MAX_CONCURRENT_IP` | 1 | pemindaian serentak per IP |
 | `SHERLOCK_TIMEOUT` | 30 | batas waktu tiap situs (detik) |
+| `SHERLOCK_PROFILE_MAX` | 120 | permintaan metadata profil per IP per jendela |
 
 ## Catatan teknis yang mudah terlewat
 
