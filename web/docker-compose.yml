@@ -25,4 +25,20 @@ services:
     depends_on:
       - api
     ports:
-      - "${SHERLOCK_PORT:-8090}:3000"
+      - "127.0.0.1:${SHERLOCK_PORT:-8090}:3000"
+    networks:
+      - default
+      - dokploy-network
+    # Traefik milik Dokploy yang menerbitkan ke publik. Entrypoint `web` saja karena
+    # TLS diterminasi Cloudflare di depan — pola yang sama dipakai aplikasi lain di VPS ini.
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: dokploy-network
+      traefik.http.routers.sherlock-web.rule: Host(`${SHERLOCK_HOST:-sherlock.nusawangsa.com}`)
+      traefik.http.routers.sherlock-web.entrypoints: web
+      traefik.http.routers.sherlock-web.service: sherlock-web
+      traefik.http.services.sherlock-web.loadbalancer.server.port: "3000"
+
+networks:
+  dokploy-network:
+    external: true
