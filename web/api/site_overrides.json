@@ -6,21 +6,24 @@
     "seperti itu lebih berbahaya daripada error, karena terlihat seperti jawaban.",
     "Tiap entri di bawah wajib menyertakan alasan dan tanggal pembuktiannya."
   ],
-
   "patch": {
     "Twitter": {
       "_alasan": "Manifest memakai urlProbe https://nitter.privacydev.net (mati, connect gagal) sehingga X selalu 'Error Connecting'. Diuji 2026-09-07 dari VPS: x.com langsung membedakan dengan jelas — ada: '<title>jack (@jack) / X</title>'; tidak ada: '<title>User Profile Not Found - X | 404 Error</title>'.",
       "url": "https://x.com/{}",
       "urlMain": "https://x.com/",
       "errorType": "message",
-      "errorMsg": ["User Profile Not Found", "<title>429 Too Many Requests</title>"],
+      "errorMsg": [
+        "User Profile Not Found",
+        "<title>429 Too Many Requests</title>"
+      ],
       "regexCheck": "^[a-zA-Z0-9_]{1,15}$",
       "username_claimed": "jack"
     }
   },
-
   "tidak_andal": {
     "Instagram": "Instagram membalas HTTP 429 untuk semua permintaan dari IP pusat data (diuji 2026-09-07), dan proxy bawaan manifest (imginn.com) membalas 403. Hasil negatif tidak bisa dipercaya.",
-    "TikTok": "Probe manifest melaporkan 'claimed' bahkan untuk username acak yang jelas tidak ada (diuji 2026-09-07). Hasil positif tidak bisa dipercaya."
+    "TikTok": "Probe manifest melaporkan 'claimed' bahkan untuk username acak yang jelas tidak ada (diuji 2026-09-07). Hasil positif tidak bisa dipercaya.",
+    "GaiaOnline": "Endpoint profil Gaia rusak total: /profiles/<siapa pun> membalas HTTP 200 berjudul 'General Error | Gaia Online', termasuk untuk username_claimed manifest sendiri ('adam'). Ada dan tidak ada tidak bisa dibedakan (diuji 2026-09-08).",
+    "F3.cool": "Setiap URL profil membalas HTTP 200 berisi 114 byte lander JavaScript yang identik, jadi cek status_code manifest selalu berkata 'ada' (diuji 2026-09-08)."
   }
 }

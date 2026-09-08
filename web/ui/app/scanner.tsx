@@ -112,6 +112,12 @@ export function Scanner() {
             const ev = JSON.parse(baris.slice(6));
             if (ev.type === "start") setTotal(ev.total);
             else if (ev.type === "result") setHasil((h) => [...h, ev as Hasil]);
+            // Koreksi menyusul: klaim "ditemukan" yang gugur saat diverifikasi ulang
+            // (403 Cloudflare, 404 berkalimat baru) dipindahkan ke statusnya yang benar.
+            else if (ev.type === "revisi")
+              setHasil((h) =>
+                h.map((x) => (x.site === ev.site ? { ...x, status: ev.status, context: ev.context } : x))
+              );
             else if (ev.type === "done") {
               setElapsed(ev.elapsed);
               setFase("done");

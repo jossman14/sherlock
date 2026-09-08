@@ -13,6 +13,7 @@ import pathlib
 import queue
 import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, asdict
 from typing import Iterator
 
@@ -20,6 +21,8 @@ from sherlock_project.notify import QueryNotify
 from sherlock_project.result import QueryStatus
 from sherlock_project.sherlock import sherlock
 from sherlock_project.sites import SitesInformation
+
+from verifikasi import periksa_ulang
 
 
 @dataclass
@@ -35,10 +38,12 @@ class Hasil:
 class _Antrean(QueryNotify):
     """QueryNotify yang menaruh tiap hasil ke queue alih-alih mencetaknya."""
 
-    def __init__(self, q: queue.Queue, sites: dict[str, dict]):
+    def __init__(self, q: queue.Queue, sites: dict[str, dict], kolam: ThreadPoolExecutor):
         super().__init__()
         self._q = q
         self._sites = sites
+        self._kolam = kolam
+        self.tinjau: dict[str, Future] = {}
 
     def update(self, result):  # dipanggil sherlock() sekali per situs
         info = self._sites.get(result.site_name, {})
@@ -52,6 +57,13 @@ class _Antrean(QueryNotify):
         if alasan:
             status = "unknown"
             context = alasan
+
+        # Klaim "ditemukan" tidak langsung dipercaya: sherlock hanya menggeledah badan
+        # respons dan mengabaikan kode status, sehingga 403 Cloudflare dan 404 berkalimat
+        # baru sama-sama lolos. Pemeriksaan ulang dikirim ke kolam benang supaya berjalan
+        # bersamaan dengan sisa pemindaian; koreksinya menyusul sebelum event "done".
+        if status == "claimed" and result.site_url_user:
+            self.tinjau[result.site_name] = self._kolam.submit(periksa_ulang, result.site_url_user)
 
         self._q.put(
             Hasil(
@@ -159,7 +171,8 @@ def pindai(
         return
 
     q: queue.Queue = queue.Queue()
-    notify = _Antrean(q, site_data)
+    kolam = ThreadPoolExecutor(max_workers=16, thread_name_prefix="verifikasi")
+    notify = _Antrean(q, site_data, kolam)
     galat: list[BaseException] = []
 
     def kerja():
@@ -188,8 +201,18 @@ def pindai(
         yield {"type": "result", "done": selesai, **asdict(item)}
 
     if galat:
+        kolam.shutdown(wait=False, cancel_futures=True)
         yield {"type": "error", "message": f"{type(galat[0]).__name__}: {galat[0]}"}
         return
+
+    for nama, tugas in notify.tinjau.items():
+        koreksi = tugas.result()
+        if koreksi is None:
+            continue
+        status, alasan = koreksi
+        ketemu -= 1
+        yield {"type": "revisi", "site": nama, "status": status, "context": alasan}
+    kolam.shutdown(wait=False)
 
     yield {
         "type": "done",
